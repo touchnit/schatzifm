@@ -56,6 +56,63 @@ const recentVideos = [];
 const recentSounds = [];
 let heartbeatActive = false;
 let heartbeatStartTime = 0;
+const GLINT_INTERVAL_MS = 10000;
+const GLINT_DURATION_MS = 650;
+let glintState = null;
+
+const glintTexture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}glint-bg.png`);
+
+function attachGlint(targetModel) {
+  const material = new THREE.SpriteMaterial({
+    map: glintTexture,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(1.4, 1.4, 1);
+  sprite.visible = false;
+  sprite.position.z = 0.5;
+  targetModel.add(sprite);
+
+  return {
+    sprite,
+    animating: false,
+    startTime: 0,
+    nextTime: performance.now() + GLINT_INTERVAL_MS,
+  };
+}
+
+function updateGlint(now) {
+  if (!glintState || introActive) return;
+
+  if (!glintState.animating && now >= glintState.nextTime) {
+    glintState.animating = true;
+    glintState.startTime = now;
+    glintState.sprite.visible = true;
+  }
+
+  if (!glintState.animating) return;
+
+  const t = (now - glintState.startTime) / GLINT_DURATION_MS;
+  if (t >= 1) {
+    glintState.animating = false;
+    glintState.sprite.visible = false;
+    glintState.sprite.material.opacity = 0;
+    glintState.nextTime = now + GLINT_INTERVAL_MS;
+    return;
+  }
+
+  const sweep = easeOutCubic(Math.min(t * 1.25, 1));
+  glintState.sprite.position.x = THREE.MathUtils.lerp(-0.6, 0.6, sweep);
+  glintState.sprite.position.y = THREE.MathUtils.lerp(-0.4, 0.4, sweep);
+  glintState.sprite.material.opacity = Math.sin(t * Math.PI) * 0.95;
+
+  const scale = 1.1 + Math.sin(t * Math.PI) * 0.5;
+  glintState.sprite.scale.set(scale, scale, 1);
+}
 
 function getHeartbeatScale(now) {
   const elapsed = (now - heartbeatStartTime) % HEARTBEAT_INTERVAL_MS;
@@ -100,6 +157,7 @@ function setupModel(loadedModel, scale) {
   model = loadedModel;
   baseScale = scale;
   scene.add(model);
+  glintState = attachGlint(model);
   startIntro();
 }
 
@@ -336,6 +394,9 @@ function animate() {
         introActive = false;
         model.position.z = 0;
         modelY = modelYTarget;
+        if (glintState) {
+          glintState.nextTime = performance.now() + GLINT_INTERVAL_MS;
+        }
       }
     } else {
       modelY += (modelYTarget - modelY) * 0.08;
@@ -358,6 +419,7 @@ function animate() {
       }
 
       model.scale.setScalar(baseScale * scaleMult);
+      updateGlint(performance.now());
     }
   }
 
