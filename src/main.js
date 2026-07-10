@@ -42,8 +42,36 @@ let popTime = 0;
 let modelY = 0;
 let modelYTarget = 0;
 let videoOpen = false;
+let ytPlayer = null;
+let ytApiPromise = null;
+let introActive = false;
+let introStartTime = 0;
+const INTRO_DURATION = 1.4;
+const INTRO_START_Y = 2.8;
+const INTRO_START_Z = 1.2;
+const INTRO_START_SCALE = 1.85;
 const recentVideos = [];
 const recentSounds = [];
+
+function easeOutCubic(t) {
+  return 1 - (1 - t) ** 3;
+}
+
+function startIntro() {
+  introActive = true;
+  introStartTime = performance.now();
+  model.position.y = INTRO_START_Y;
+  model.position.z = INTRO_START_Z;
+  model.scale.setScalar(baseScale * INTRO_START_SCALE);
+  model.rotation.set(0, 0, 0);
+}
+
+function setupModel(loadedModel, scale) {
+  model = loadedModel;
+  baseScale = scale;
+  scene.add(model);
+  startIntro();
+}
 
 function pickFromPool(pool, recent, historySize = 3) {
   const recentSet = new Set(recent.slice(-historySize));
@@ -110,8 +138,7 @@ loader.load(
     const center = box.getCenter(new THREE.Vector3());
     model.position.sub(center);
     baseScale = (2.5 / Math.max(size.x, size.y, size.z)) * 0.5;
-    model.scale.setScalar(baseScale);
-    scene.add(model);
+    setupModel(model, baseScale);
   },
   undefined,
   (error) => {
@@ -120,9 +147,7 @@ loader.load(
       new THREE.IcosahedronGeometry(1.2, 1),
       new THREE.MeshStandardMaterial({ color: 0xff6b9d, metalness: 0, roughness: 0.95 })
     );
-    model = fallback;
-    baseScale = 0.75;
-    scene.add(model);
+    setupModel(fallback, 0.75);
   }
 );
 
@@ -152,7 +177,7 @@ addEventListener('pointermove', (event) => {
 const raycaster = new THREE.Raycaster();
 
 addEventListener('pointerdown', (event) => {
-  if (!model) return;
+  if (!model || introActive) return;
 
   const pointer = new THREE.Vector2(
     (event.clientX / innerWidth) * 2 - 1,
@@ -198,8 +223,33 @@ function spawnHearts() {
 function playRandomSound() {
   const src = pickRandomSound();
   const audio = new Audio(`${import.meta.env.BASE_URL}${src}`);
-  audio.volume = 0.7;
+  audio.volume = 0.91;
   audio.play().catch(() => {});
+}
+
+function loadYouTubeApi() {
+  if (window.YT?.Player) {
+    return Promise.resolve();
+  }
+
+  if (!ytApiPromise) {
+    ytApiPromise = new Promise((resolve) => {
+      window.onYouTubeIframeAPIReady = resolve;
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(script);
+    });
+  }
+
+  return ytApiPromise;
+}
+
+function onPlayerStateChange(event) {
+  if (event.data !== YT.PlayerState.PLAYING) return;
+
+  videoEl.classList.remove('loading');
+  videoEl.querySelector('.video-loader')?.remove();
+  setBackgroundMode('playing');
 }
 
 function showRandomVideo() {
@@ -211,39 +261,63 @@ function showRandomVideo() {
       <div class="video-loader__spinner"></div>
       <p class="video-loader__text">Dein Schätzi lädt ❤️</p>
     </div>
+    <div id="yt-player"></div>
   `;
   videoOpen = true;
   liftModelForVideo();
-  setBackgroundMode('playing');
+  setBackgroundMode('idle');
 
-  const iframe = document.createElement('iframe');
-  iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
-  iframe.allow = 'autoplay; encrypted-media';
-  iframe.allowFullscreen = true;
+  loadYouTubeApi().then(() => {
+    if (ytPlayer) {
+      ytPlayer.destroy();
+      ytPlayer = null;
+    }
 
-  iframe.addEventListener('load', () => {
-    videoEl.classList.remove('loading');
-    videoEl.querySelector('.video-loader')?.remove();
+    ytPlayer = new YT.Player('yt-player', {
+      width: '100%',
+      height: '100%',
+      videoId: id,
+      playerVars: {
+        autoplay: 1,
+        rel: 0,
+      },
+      events: {
+        onStateChange: onPlayerStateChange,
+      },
+    });
   });
-
-  videoEl.appendChild(iframe);
 }
 
 function animate() {
   requestAnimationFrame(animate);
 
   if (model) {
-    modelY += (modelYTarget - modelY) * 0.08;
-    model.position.y = modelY;
+    if (introActive) {
+      const t = Math.min((performance.now() - introStartTime) / (INTRO_DURATION * 1000), 1);
+      const eased = easeOutCubic(t);
 
-    target.x += (mouse.x * 0.5 - target.x) * 0.05;
-    target.y += (mouse.y * 0.3 - target.y) * 0.05;
-    model.rotation.y = target.x;
-    model.rotation.x = -target.y;
+      model.position.y = THREE.MathUtils.lerp(INTRO_START_Y, modelYTarget, eased);
+      model.position.z = THREE.MathUtils.lerp(INTRO_START_Z, 0, eased);
+      model.scale.setScalar(baseScale * THREE.MathUtils.lerp(INTRO_START_SCALE, 1, eased));
 
-    const elapsed = (performance.now() - popTime) / 1000;
-    const pop = elapsed < 0.3 ? 1 + Math.sin((elapsed / 0.3) * Math.PI) * 0.15 : 1;
-    model.scale.setScalar(baseScale * pop);
+      if (t >= 1) {
+        introActive = false;
+        model.position.z = 0;
+        modelY = modelYTarget;
+      }
+    } else {
+      modelY += (modelYTarget - modelY) * 0.08;
+      model.position.y = modelY;
+
+      target.x += (mouse.x * 0.5 - target.x) * 0.05;
+      target.y += (mouse.y * 0.3 - target.y) * 0.05;
+      model.rotation.y = target.x;
+      model.rotation.x = -target.y;
+
+      const elapsed = (performance.now() - popTime) / 1000;
+      const pop = elapsed < 0.3 ? 1 + Math.sin((elapsed / 0.3) * Math.PI) * 0.15 : 1;
+      model.scale.setScalar(baseScale * pop);
+    }
   }
 
   renderer.render(scene, camera);

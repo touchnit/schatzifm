@@ -11,14 +11,26 @@ export function initBackground() {
   idleLayer = document.createElement('div');
   idleLayer.className = 'bg-idle';
 
-  for (let i = 0; i < 4; i++) {
+  const gradientPulse = document.createElement('div');
+  gradientPulse.className = 'bg-gradient-pulse';
+  idleLayer.appendChild(gradientPulse);
+
+  const lightSweep = document.createElement('div');
+  lightSweep.className = 'bg-light-sweep';
+  idleLayer.appendChild(lightSweep);
+
+  const centerGlow = document.createElement('div');
+  centerGlow.className = 'bg-center-glow';
+  idleLayer.appendChild(centerGlow);
+
+  for (let i = 0; i < 6; i++) {
     const orb = document.createElement('div');
-    orb.className = 'bg-orb';
-    orb.style.setProperty('--x', `${15 + i * 22}%`);
-    orb.style.setProperty('--y', `${20 + (i % 2) * 35}%`);
-    orb.style.setProperty('--size', `${220 + i * 60}px`);
-    orb.style.setProperty('--delay', `${i * -2.5}s`);
-    orb.style.setProperty('--duration', `${10 + i * 2}s`);
+    orb.className = `bg-orb${i % 2 === 0 ? '' : ' bg-orb--alt'}`;
+    orb.style.setProperty('--x', `${8 + i * 16}%`);
+    orb.style.setProperty('--y', `${12 + (i % 3) * 28}%`);
+    orb.style.setProperty('--size', `${180 + i * 45}px`);
+    orb.style.setProperty('--delay', `${i * -3.2}s`);
+    orb.style.setProperty('--duration', `${12 + i * 2.5}s`);
     idleLayer.appendChild(orb);
   }
 
@@ -40,7 +52,7 @@ export function initBackground() {
 }
 
 export function setBackgroundMode(nextMode) {
-  if (!container || mode === nextMode) return;
+  if (!container) return;
   mode = nextMode;
   container.dataset.mode = nextMode;
 }

@@ -17,9 +17,17 @@ export const YOUTUBE_IDS = [
   'IcXOFlW0zRg',
   'U5R9dA9EeB8',
   'kjaavp2U1v0',
-  'F9y9-xgbPmM',
+  'SkhXvo6O8rY',
   'PP9I6WRD4VI',
   'lHZtcC67yrY',
   'Lga9LkxgDuE',
-  'haECT-SerHk'
+  'haECT-SerHk',
+  'mMu1hrTcDk8',
+  'kN1gN69itp0',
+  'ZWa9qeZjW_Q',
+  'fHaXUqUyfB4',
+  'DiCRUo5rKPI',
+  'R8dE-XM7z6s',
+  'VCPbQKrA-M4',
+  '0GnA8VYOfko'
 ];
