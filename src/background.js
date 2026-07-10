@@ -48,6 +48,23 @@ export function initBackground() {
   }
 
   container.append(idleLayer, equalizerLayer);
+
+  const bubblesLayer = document.createElement('div');
+  bubblesLayer.className = 'bg-bubbles';
+
+  for (let i = 0; i < 55; i++) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bg-bubble';
+    const size = 8 + Math.random() * 36;
+    bubble.style.setProperty('--size', `${size}px`);
+    bubble.style.setProperty('--x', `${Math.random() * 100}%`);
+    bubble.style.setProperty('--dur', `${4 + Math.random() * 8}s`);
+    bubble.style.setProperty('--delay', `${Math.random() * -10}s`);
+    bubble.style.setProperty('--drift', `${Math.random() * 80 - 40}px`);
+    bubblesLayer.appendChild(bubble);
+  }
+
+  container.append(bubblesLayer);
   setBackgroundMode('idle');
 }
 

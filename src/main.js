@@ -3,6 +3,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { SOUNDS, YOUTUBE_IDS } from './config.js';
 import { initBackground, setBackgroundMode } from './background.js';
 
+function updateBackgroundMode(mode) {
+  setBackgroundMode(easterEggActive ? 'bubbles' : mode);
+}
+
 const sceneEl = document.getElementById('scene');
 const heartsEl = document.getElementById('hearts');
 const videoEl = document.getElementById('video-container');
@@ -58,9 +62,27 @@ let heartbeatActive = false;
 let heartbeatStartTime = 0;
 const GLINT_INTERVAL_MS = 10000;
 const GLINT_DURATION_MS = 650;
+const SPIN_DURATION_MS = 4000;
+const SPIN_TURNS = 2;
 let glintState = null;
+let spinActive = false;
+let spinStartTime = 0;
+let easterEggActive = false;
+const clickTimestamps = [];
+const EASTER_EGG_CLICKS = 10;
+const EASTER_EGG_WINDOW_MS = 5000;
 
 const glintTexture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}glint-bg.png`);
+
+function startClickSpin() {
+  spinActive = true;
+  spinStartTime = performance.now();
+}
+
+function getSpinOffset(now) {
+  const t = Math.min((now - spinStartTime) / SPIN_DURATION_MS, 1);
+  return easeOutCubic(t) * Math.PI * 2 * SPIN_TURNS;
+}
 
 function attachGlint(targetModel) {
   const material = new THREE.SpriteMaterial({
@@ -153,12 +175,88 @@ function startIntro() {
   model.rotation.set(0, 0, 0);
 }
 
-function setupModel(loadedModel, scale) {
+function setupModel(loadedModel, scale, { runIntro = true } = {}) {
   model = loadedModel;
   baseScale = scale;
   scene.add(model);
   glintState = attachGlint(model);
-  startIntro();
+
+  if (runIntro) {
+    startIntro();
+  } else {
+    introActive = false;
+    model.position.z = 0;
+
+    if (videoOpen) {
+      liftModelForVideo();
+    } else {
+      modelYTarget = 0;
+    }
+
+    modelY = modelYTarget;
+    model.scale.setScalar(baseScale);
+  }
+}
+
+function playChampagneSound() {
+  const audio = new Audio(`${import.meta.env.BASE_URL}sounds/champagne.mp3`);
+  audio.volume = 0.91;
+  audio.play().catch(() => {});
+}
+
+function swapToBottleModel() {
+  if (model) {
+    scene.remove(model);
+  }
+
+  loader.load(`${import.meta.env.BASE_URL}rottkapchen.glb`, (gltf) => {
+    const bottleModel = gltf.scene;
+    matteifyMaterials(bottleModel);
+    const box = new THREE.Box3().setFromObject(bottleModel);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    bottleModel.position.sub(center);
+    const scale = (2.5 / Math.max(size.x, size.y, size.z)) * 0.5;
+    setupModel(bottleModel, scale, { runIntro: false });
+  });
+}
+
+function activateEasterEgg() {
+  easterEggActive = true;
+  spinActive = false;
+  heartbeatActive = false;
+  videoOpen = false;
+  modelYTarget = 0;
+
+  videoEl.classList.remove('show', 'loading');
+  videoEl.innerHTML = '';
+
+  if (ytPlayer) {
+    ytPlayer.destroy();
+    ytPlayer = null;
+  }
+
+  playChampagneSound();
+  setBackgroundMode('bubbles');
+  swapToBottleModel();
+}
+
+function trackClickForEasterEgg() {
+  if (easterEggActive) return false;
+
+  const now = performance.now();
+  clickTimestamps.push(now);
+
+  while (clickTimestamps.length && clickTimestamps[0] < now - EASTER_EGG_WINDOW_MS) {
+    clickTimestamps.shift();
+  }
+
+  if (clickTimestamps.length > EASTER_EGG_CLICKS) {
+    activateEasterEgg();
+    return true;
+  }
+
+  return false;
 }
 
 function pickFromPool(pool, recent, historySize = 3) {
@@ -184,9 +282,17 @@ function pickRandomSound() {
 }
 
 function getVideoLiftY() {
-  const videoHeight = Math.min(innerWidth * 0.8, 640) * (9 / 16);
   const gap = 32;
-  const videoTop = innerHeight - 24 - videoHeight;
+  let videoTop;
+
+  if (videoEl.classList.contains('show')) {
+    videoTop = videoEl.getBoundingClientRect().top;
+  } else {
+    const videoHeight = Math.min(innerWidth * 0.8, 640) * (9 / 16);
+    const videoBottom = innerHeight * 0.12;
+    videoTop = innerHeight - videoBottom - videoHeight;
+  }
+
   const desiredCenterY = (videoTop - gap) / 2;
   const pixelShift = innerHeight / 2 - desiredCenterY;
 
@@ -342,7 +448,10 @@ addEventListener('pointerdown', async (event) => {
 });
 
 function onModelClick() {
+  if (trackClickForEasterEgg()) return;
+
   popTime = performance.now();
+  startClickSpin();
   spawnHearts();
   playRandomSound();
   showRandomVideo();
@@ -354,7 +463,7 @@ function spawnHearts() {
   for (let i = 0; i < 24; i++) {
     const heart = document.createElement('div');
     heart.className = 'heart';
-    heart.textContent = '❤️';
+    heart.textContent = easterEggActive ? '🍾' : '❤️';
 
     const angle = Math.random() * Math.PI * 2;
     const distance = 200 + Math.random() * 400;
@@ -400,7 +509,7 @@ function onPlayerStateChange(event) {
 
   videoEl.classList.remove('loading');
   videoEl.querySelector('.video-loader')?.remove();
-  setBackgroundMode('playing');
+  updateBackgroundMode('playing');
   startHeartbeat();
 }
 
@@ -417,7 +526,7 @@ function showRandomVideo() {
   `;
   videoOpen = true;
   liftModelForVideo();
-  setBackgroundMode('idle');
+  updateBackgroundMode('idle');
   heartbeatActive = false;
 
   loadYouTubeApi().then(() => {
@@ -468,7 +577,20 @@ function animate() {
       const tiltInput = getTiltInput();
       target.x += (tiltInput.x * 0.5 - target.x) * 0.05;
       target.y += (tiltInput.y * 0.3 - target.y) * 0.05;
-      model.rotation.y = target.x;
+
+      if (spinActive) {
+        const now = performance.now();
+        const t = Math.min((now - spinStartTime) / SPIN_DURATION_MS, 1);
+        model.rotation.y = target.x + getSpinOffset(now);
+
+        if (t >= 1) {
+          spinActive = false;
+          model.rotation.y = target.x;
+        }
+      } else {
+        model.rotation.y = target.x;
+      }
+
       model.rotation.x = -target.y;
 
       const elapsed = (performance.now() - popTime) / 1000;

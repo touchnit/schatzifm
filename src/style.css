@@ -52,6 +52,57 @@ body {
   opacity: 1;
 }
 
+#bg-animation[data-mode='bubbles'] {
+  background: linear-gradient(180deg, #2f74d9 0%, #0f3f9c 100%);
+}
+
+#bg-animation[data-mode='bubbles'] .bg-idle,
+#bg-animation[data-mode='bubbles'] .bg-equalizer {
+  opacity: 0;
+}
+
+#bg-animation[data-mode='bubbles'] .bg-bubbles {
+  opacity: 1;
+}
+
+.bg-bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+
+.bg-bubble {
+  position: absolute;
+  left: var(--x);
+  bottom: -60px;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.15) 55%, rgba(255, 220, 230, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  animation: bubble-rise var(--dur) linear infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.7);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: translateY(calc(-100vh - 120px)) translateX(var(--drift)) scale(1.05);
+    opacity: 0;
+  }
+}
+
 .bg-gradient-pulse {
   position: absolute;
   inset: -20%;
