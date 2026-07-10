@@ -50,8 +50,38 @@ const INTRO_DURATION = 1.4;
 const INTRO_START_Y = 2.8;
 const INTRO_START_Z = 1.2;
 const INTRO_START_SCALE = 1.85;
+const HEARTBEAT_INTERVAL_MS = 2200;
+const HEARTBEAT_PULSE_MS = 605;
 const recentVideos = [];
 const recentSounds = [];
+let heartbeatActive = false;
+let heartbeatStartTime = 0;
+
+function getHeartbeatScale(now) {
+  const elapsed = (now - heartbeatStartTime) % HEARTBEAT_INTERVAL_MS;
+  if (elapsed > HEARTBEAT_PULSE_MS) return 1;
+
+  const t = elapsed / HEARTBEAT_PULSE_MS;
+
+  if (t < 0.22) {
+    return 1 + Math.sin((t / 0.22) * Math.PI) * 0.1;
+  }
+
+  if (t < 0.38) {
+    return 1;
+  }
+
+  if (t < 0.58) {
+    return 1 + Math.sin(((t - 0.38) / 0.2) * Math.PI) * 0.07;
+  }
+
+  return 1;
+}
+
+function startHeartbeat() {
+  heartbeatActive = true;
+  heartbeatStartTime = performance.now();
+}
 
 function easeOutCubic(t) {
   return 1 - (1 - t) ** 3;
@@ -250,6 +280,7 @@ function onPlayerStateChange(event) {
   videoEl.classList.remove('loading');
   videoEl.querySelector('.video-loader')?.remove();
   setBackgroundMode('playing');
+  startHeartbeat();
 }
 
 function showRandomVideo() {
@@ -266,6 +297,7 @@ function showRandomVideo() {
   videoOpen = true;
   liftModelForVideo();
   setBackgroundMode('idle');
+  heartbeatActive = false;
 
   loadYouTubeApi().then(() => {
     if (ytPlayer) {
@@ -315,8 +347,17 @@ function animate() {
       model.rotation.x = -target.y;
 
       const elapsed = (performance.now() - popTime) / 1000;
-      const pop = elapsed < 0.3 ? 1 + Math.sin((elapsed / 0.3) * Math.PI) * 0.15 : 1;
-      model.scale.setScalar(baseScale * pop);
+      let scaleMult = 1;
+
+      if (elapsed < 0.3) {
+        scaleMult *= 1 + Math.sin((elapsed / 0.3) * Math.PI) * 0.15;
+      }
+
+      if (heartbeatActive) {
+        scaleMult *= getHeartbeatScale(performance.now());
+      }
+
+      model.scale.setScalar(baseScale * scaleMult);
     }
   }
 
