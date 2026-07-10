@@ -13,6 +13,96 @@ body {
   font-family: system-ui, sans-serif;
 }
 
+#bg-animation {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #ff0000;
+}
+
+#bg-animation[data-mode='idle'] .bg-idle {
+  opacity: 1;
+}
+
+#bg-animation[data-mode='idle'] .bg-equalizer {
+  opacity: 0;
+}
+
+#bg-animation[data-mode='playing'] .bg-idle {
+  opacity: 0.35;
+}
+
+#bg-animation[data-mode='playing'] .bg-equalizer {
+  opacity: 1;
+}
+
+.bg-idle,
+.bg-equalizer {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.8s ease;
+}
+
+.bg-orb {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 220, 230, 0.55) 0%, rgba(255, 120, 150, 0.2) 45%, transparent 70%);
+  filter: blur(40px);
+  animation: orb-drift var(--duration) ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: translate(calc(-50% + 30px), calc(-50% - 20px)) scale(1.15);
+    opacity: 1;
+  }
+}
+
+.bg-equalizer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 4vw 12vh;
+  pointer-events: none;
+}
+
+.eq-bar {
+  flex: 1;
+  max-width: 14px;
+  height: 100%;
+  background: linear-gradient(to top, rgba(255, 80, 110, 0.15), rgba(255, 230, 240, 0.75));
+  border-radius: 4px 4px 0 0;
+  transform-origin: bottom;
+  animation: eq-bounce var(--dur) ease-in-out infinite alternate;
+  animation-delay: var(--delay);
+}
+
+@keyframes eq-bounce {
+  0% {
+    transform: scaleY(var(--min));
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scaleY(var(--max));
+    opacity: 1;
+  }
+}
+
 #scene {
   position: fixed;
   inset: 0;

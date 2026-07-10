@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { SOUNDS, YOUTUBE_IDS } from './config.js';
+import { initBackground, setBackgroundMode } from './background.js';
 
 const sceneEl = document.getElementById('scene');
 const heartsEl = document.getElementById('hearts');
@@ -213,6 +214,7 @@ function showRandomVideo() {
   `;
   videoOpen = true;
   liftModelForVideo();
+  setBackgroundMode('playing');
 
   const iframe = document.createElement('iframe');
   iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
@@ -248,6 +250,8 @@ function animate() {
 }
 
 animate();
+
+initBackground();
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
