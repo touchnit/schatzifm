@@ -20,4 +20,6 @@ export const YOUTUBE_IDS = [
   'F9y9-xgbPmM',
   'PP9I6WRD4VI',
   'lHZtcC67yrY',
+  'Lga9LkxgDuE',
+  'haECT-SerHk'
 ];
