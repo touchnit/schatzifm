@@ -5,6 +5,8 @@ export const SOUNDS = [
   'sounds/schatzi-jingle4.mp3',
   'sounds/schatzi-jingle5.mp3',
   'sounds/schatzi-jingle6.mp3',
+  'sounds/schatzi-jingle7.mp3',
+  'sounds/schatzi-jingle8.mp3',
 ];
 
 // YouTube video IDs from your playlist (the part after v= or youtu.be/)
@@ -29,5 +31,6 @@ export const YOUTUBE_IDS = [
   'DiCRUo5rKPI',
   'R8dE-XM7z6s',
   'VCPbQKrA-M4',
-  '0GnA8VYOfko'
+  '0GnA8VYOfko',
+  'lUey9IMSxZc',
 ];
