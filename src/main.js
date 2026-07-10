@@ -259,7 +259,7 @@ function showRandomVideo() {
   videoEl.innerHTML = `
     <div class="video-loader">
       <div class="video-loader__spinner"></div>
-      <p class="video-loader__text">Dein Schätzi lädt ❤️</p>
+      <p class="video-loader__text">Dein Schatzi lädt ❤️</p>
     </div>
     <div id="yt-player"></div>
   `;
