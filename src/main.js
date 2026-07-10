@@ -239,9 +239,59 @@ loader.load(
   }
 );
 
-const mouse = new THREE.Vector2();
+const pointerInput = new THREE.Vector2();
+const orientationInput = new THREE.Vector2();
 const target = new THREE.Vector2();
 const modelScreenPos = new THREE.Vector3();
+const isMobile = window.matchMedia('(pointer: coarse)').matches;
+let orientationEnabled = false;
+let isTouching = false;
+
+function clampInput(value) {
+  return THREE.MathUtils.clamp(value, -1, 1);
+}
+
+function handleOrientation(event) {
+  if (event.gamma == null || event.beta == null) return;
+
+  orientationInput.x = clampInput(event.gamma / 40);
+  orientationInput.y = clampInput((event.beta - 45) / 40);
+}
+
+function getTiltInput() {
+  if (isMobile && orientationEnabled && !isTouching) {
+    return orientationInput;
+  }
+
+  return pointerInput;
+}
+
+async function enableOrientation() {
+  if (!isMobile || orientationEnabled) return orientationEnabled;
+
+  if (
+    typeof DeviceOrientationEvent !== 'undefined' &&
+    typeof DeviceOrientationEvent.requestPermission === 'function'
+  ) {
+    try {
+      const permission = await DeviceOrientationEvent.requestPermission();
+      if (permission !== 'granted') return false;
+    } catch {
+      return false;
+    }
+  } else if (typeof DeviceOrientationEvent === 'undefined') {
+    return false;
+  }
+
+  window.addEventListener('deviceorientation', handleOrientation, true);
+  orientationEnabled = true;
+  return true;
+}
+
+if (isMobile && typeof DeviceOrientationEvent?.requestPermission !== 'function') {
+  window.addEventListener('deviceorientation', handleOrientation, true);
+  orientationEnabled = true;
+}
 
 function getModelScreenPosition() {
   if (!model) {
@@ -258,13 +308,26 @@ function getModelScreenPosition() {
 }
 
 addEventListener('pointermove', (event) => {
-  mouse.x = (event.clientX / innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / innerHeight) * 2 + 1;
+  pointerInput.x = (event.clientX / innerWidth) * 2 - 1;
+  pointerInput.y = -(event.clientY / innerHeight) * 2 + 1;
+});
+
+addEventListener('pointerup', () => {
+  isTouching = false;
+});
+
+addEventListener('pointercancel', () => {
+  isTouching = false;
 });
 
 const raycaster = new THREE.Raycaster();
 
-addEventListener('pointerdown', (event) => {
+addEventListener('pointerdown', async (event) => {
+  if (isMobile) {
+    isTouching = true;
+    await enableOrientation();
+  }
+
   if (!model || introActive) return;
 
   const pointer = new THREE.Vector2(
@@ -402,8 +465,9 @@ function animate() {
       modelY += (modelYTarget - modelY) * 0.08;
       model.position.y = modelY;
 
-      target.x += (mouse.x * 0.5 - target.x) * 0.05;
-      target.y += (mouse.y * 0.3 - target.y) * 0.05;
+      const tiltInput = getTiltInput();
+      target.x += (tiltInput.x * 0.5 - target.x) * 0.05;
+      target.y += (tiltInput.y * 0.3 - target.y) * 0.05;
       model.rotation.y = target.x;
       model.rotation.x = -target.y;
 
